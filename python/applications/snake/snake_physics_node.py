@@ -47,7 +47,6 @@ def is_direction_blocked(snake_position, current_direction_vector):
 
 def generate_snake(snake, apple):
 
-    pid = str(uuid4())
     if snake.button_direction == Direction.RIGHT:
         snake.snake_head =  [snake.snake_head[0] + 1, snake.snake_head[1]]
 
@@ -67,12 +66,10 @@ def generate_snake(snake, apple):
     if snake.snake_head == apple.apple_position:
         apple.apple_position, snake.score = collision_with_apple(apple.apple_position, snake.score)
         snake.snake_position = [snake.snake_head] + snake.snake_position
-        snake.position_uids = [pid] + snake.position_uids
 
     else:
         snake.snake_position = [snake.snake_head] + snake.snake_position
         snake.snake_position = snake.snake_position[:-1]
-        snake.position_uids = [pid] + snake.position_uids[:-1]
 
 
 def play_game(dataframe):
@@ -108,6 +105,13 @@ def game_physics(df, num_players):
     #phase 2: execute each frame of the game - the first frame must set up the game
     # by placing the apple in the world and adding it to the dataframe
     initializing_apple(df)
+    for snake in df.read_all(Snake):
+        x, y = random.randint(4, World.display_width), random.randint(1, World.display_height)
+        snake.snake_head = [x, y]
+        snake.snake_position = [snake.snake_head, [x-1, y], [x-2, y]]
+        snake.start_game = True
+    df.commit()
+
 
     # print ("Ready to play the game.")
     #phase 3: when the game concludes/ends, finish it
