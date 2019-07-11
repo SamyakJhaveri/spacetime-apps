@@ -1,11 +1,11 @@
 import time
+import random
 import spacetime
 from rtypes import pcc_set, dimension, primarykey
 from snake_datamodel import Snake, Apple, World, Direction, FRAMETIME
 from snake_physics_node import main as phmain
 from spacetime import Node
 from curses import wrapper
-from snake_visualizer_node import main as visualizer_main
 
 from threading import Thread
 
@@ -48,8 +48,14 @@ def player_client(stdscr, df):
     curses.curs_set(0)
     curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
     curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK)
+    curses.init_pair(3, curses.COLOR_BLUE, curses.COLOR_BLACK)
+    curses.init_pair(4, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
+    curses.init_pair(5, curses.COLOR_YELLOW, curses.COLOR_BLACK)
+
     draw_border(stdscr)
     snake = init_player(df)
+    while not snake.start_game:
+        df.pull_await()
 
     # Ask the player to press any key to continue
     input_thread = Thread(target=take_user_input, args=(stdscr, df, snake), daemon=True)
@@ -108,7 +114,7 @@ def visualizer(stdscr, df):
         curses.nocbreak()
         stdscr.keypad(False)
         curses.echo()
-        print (list(s.snake_position for s in df.rAead_all(Snake)))
+        print (list(s.snake_position for s in df.read_all(Snake)))
         print (list(a.apple_position for a in df.read_all(Apple)))
         raise
 
@@ -134,7 +140,7 @@ def display_snakes(stdscr, snakes, prev_snakes_pos):
             stdscr.addch(y, x, ' ', curses.color_pair(1))
         for i, pos in enumerate(snake.snake_position):
             x, y = pos
-            stdscr.addch(y, x, 'X' if i == 0 else 'o', curses.color_pair(2))
+            stdscr.addch(y, x, 'X' if i == 0 else 'o', curses.color_pair(random.randint(2,6)))
 
         prev_snakes_pos[oid] = snake.snake_position
 
@@ -162,7 +168,7 @@ def visualizer_test(stdscr):
 
 def main():
     #phmain(1)
-    player_node = Node(player_execution, dataframe=["127.0.0.1", 8000], Types=[Snake, Apple])
+    player_node = Node(player_execution, dataframe=["smoke.ics.uci.edu", 8000], Types=[Snake, Apple])
     player_node.start()
     #visualizer_main()
 if __name__ == "__main__":
