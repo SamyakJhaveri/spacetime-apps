@@ -73,7 +73,7 @@ def visualize(dataframe):
 
 def main():
 
-    visualizer_node = Node(visualize, dataframe = ["127.0.0.1", 8000], Types = [Snake, Apple])
+    visualizer_node = Node(visualize, dataframe = ["smoke.ics.uci.edu", 8000], Types = [Snake, Apple])
     visualizer_node.start()
 
 if __name__ == "__main__":

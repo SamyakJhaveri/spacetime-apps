@@ -52,6 +52,7 @@ def player_client(stdscr, df):
     curses.init_pair(4, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
     curses.init_pair(5, curses.COLOR_YELLOW, curses.COLOR_BLACK)
 
+    snake_colors = []
     draw_border(stdscr)
     snake = init_player(df)
     while not snake.start_game:
@@ -134,13 +135,16 @@ def display_snakes(stdscr, snakes, prev_snakes_pos):
         snake.oid: snake
         for snake in snakes
     }
+
+    for i in range(1,6):
+        snake_color[i] = curses.color_pair(i)
     for oid, snake in snake_dict.items():
         prev_pos = prev_snakes_pos.setdefault(oid, list())
         for x, y in prev_pos:
             stdscr.addch(y, x, ' ', curses.color_pair(1))
         for i, pos in enumerate(snake.snake_position):
             x, y = pos
-            stdscr.addch(y, x, 'X' if i == 0 else 'o', curses.color_pair(random.randint(2,6)))
+            stdscr.addch(y, x, 'X' if i == 0 else 'o', snake_color[i])
 
         prev_snakes_pos[oid] = snake.snake_position
 
@@ -168,7 +172,7 @@ def visualizer_test(stdscr):
 
 def main():
     #phmain(1)
-    player_node = Node(player_execution, dataframe=["smoke.ics.uci.edu", 8000], Types=[Snake, Apple])
+    player_node = Node(player_execution, dataframe=["127.0.0.1", 8000], Types=[Snake, Apple])
     player_node.start()
     #visualizer_main()
 if __name__ == "__main__":
