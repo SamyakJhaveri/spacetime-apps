@@ -1,80 +1,121 @@
 import time
-import sys
+import random
 import spacetime
-import pygame
-from multiprocessing import freeze_support
 from rtypes import pcc_set, dimension, primarykey
-from snake_datamodel import Snake, Apple, World
+from snake_datamodel import Snake, Apple, World, Direction, FRAMETIME
 from spacetime import Node
+from curses import wrapper
+
+from threading import Thread
+import curses
 
 
-display_width = 500
-display_height = 500
-red = (255,0,0)
-green = (0,255,0)
-white = (255,255,255)
-black = (0,0,0)
-window_color = (200,200,200)
+def visualize(df):
+    wrapper(visualizer, df)
 
-def display_snake(display, snake_position):
-    for position in snake_position:
-        pygame.draw.rect(display,red,pygame.Rect(position[0],position[1],10,10))
+def draw_border(stdscr):
+    for i in range(World.display_width):
+        stdscr.addch(0,i,curses.ACS_HLINE,curses.color_pair(1))
+    for i in range(World.display_height):
+        stdscr.addch(i ,World.display_width,curses.ACS_VLINE,curses.color_pair(1))
+    for i in range(World.display_width):
+        stdscr.addch(World.display_height,i,curses.ACS_HLINE,curses.color_pair(1))
+    for i in range(World.display_height):
+        stdscr.addch(i ,0,curses.ACS_VLINE,curses.color_pair(1))
 
-def display_apple(display,apple_position,apple):
-    display.blit(apple,(apple_position[0],apple_position[1]))
-
-def display_final_score(display, display_text,final_score):
-    largeText = pygame.font.Font('FreeSansBoldOblique.ttf',32)
-    TextSurf = largeText.render(display_text,True,black)
-    TextRect = TextSurf.get_rect()
-    TextRect.center = ((display_width/2),(display_height/2))
-    display.blit(TextSurf,TextRect)
-    pygame.display.update()
-    time.sleep(2)
-
-def init_display():
-    apple_image = pygame.image.load('apple.jpg')
-    clock = pygame.time.Clock()
-
-    pygame.init()
-    display = pygame.display.set_mode((display_width,display_height))
-
-    display.fill(window_color)
-    pygame.display.update()
-    return display, apple_image, clock
-
-def show_frame(display, apple1, snake, apple_image):
-    display.fill(window_color)
-    display_apple(display,apple1.apple_position,apple_image)
-    display_snake(display, snake.snake_position)
-    pygame.display.update()
-    pygame.display.set_caption("Sacred Games "+" Score :"+str(snake.score))
+    stdscr.addch(0 ,0,curses.ACS_ULCORNER,curses.color_pair(1))
+    stdscr.addch(0 ,World.display_width,curses.ACS_URCORNER,curses.color_pair(1))
+    stdscr.addch(World.display_height ,0,curses.ACS_LLCORNER,curses.color_pair(1))
+    stdscr.addch(
+        World.display_height,
+        World.display_width, curses.ACS_LRCORNER, curses.color_pair(1))
 
 
-def visualize(dataframe):
-    display, apple_image, clock = init_display()
-    snake = None
-    apple1 = None
-    while not snake and not apple1:
-        dataframe.pull_await()
-        snakes = dataframe.read_all(Snake)
-        if snakes:
-            snake = snakes[0]
-        apples = dataframe.read_all(Apple)
-        if apples:
-            apple1 = apples[0]
-    show_frame(display, apple1, snake, apple_image)
+    #stdscr.addch(, )
+    #stdscr.addch(, )
+    #stdscr.addch(, )
 
-    while snake.crashed is not True:
-        dataframe.pull()
-        dataframe.checkout()
-        show_frame(display, apple1, snake, apple_image)
-        clock.tick(5)
+
+def visualizer(stdscr, df):
+    curses.start_color()
+    curses.curs_set(0)
+    curses.init_pair(1, curses.COLOR_YELLOW, curses.COLOR_BLACK)
+
+    draw_border(stdscr)
+    vis_thread = Thread(
+        target=visualize_frames, args=(stdscr, df), daemon=True)
+
+    vis_thread.start()
+    vis_thread.join()
+
+def visualize_frames(stdscr, df):
+    try:
+        snakes, apple = list(), None
+        while not snakes and not apple:
+            df.pull_await()
+            snakes = df.read_all(Snake)
+            apples = df.read_all(Apple)
+            if apples:
+                apple = apples[0]
+        # We have an apple, and some snakes!!
+            prev_snakes_pos, prev_apple_pos = show_frame(
+                stdscr, apple, snakes, dict(),
+                None)
+
+        while any(not snake.crashed for snake in snakes):
+            start_t = time.perf_counter()
+            df.pull()
+            df.checkout()
+            prev_snakes_pos, prev_apple_pos = show_frame(
+                stdscr, apple, snakes, prev_snakes_pos,
+                prev_apple_pos)
+            end_t = time.perf_counter()
+            if end_t - start_t < FRAMETIME:
+                time.sleep(FRAMETIME - end_t + start_t)
+    except Exception:
+        curses.nocbreak()
+        stdscr.keypad(False)
+        curses.echo()
+        print (list(s.snake_position for s in df.read_all(Snake)))
+        print (list(a.apple_position for a in df.read_all(Apple)))
+        raise
+
+
+def show_frame(
+        stdscr, apple, snakes, prev_snakes_pos,
+        prev_apple_pos):
+    if prev_apple_pos != apple.apple_position:
+        display_apple(stdscr, apple.apple_position)
+    prev_snakes_pos = display_snakes(
+        stdscr, snakes, prev_snakes_pos)
+    stdscr.refresh()
+    return prev_snakes_pos, apple.apple_position
+
+def display_apple(stdscr, position):
+    stdscr.addch(position[1], position[0], '@', curses.color_pair(1))
+
+def display_snakes(stdscr, snakes, prev_snakes_pos):
+    snake_dict = {
+        snake.oid: snake
+        for snake in snakes
+    }
+
+    for oid, snake in snake_dict.items():
+        prev_pos = prev_snakes_pos.setdefault(oid, list())
+        for x, y in prev_pos:
+            stdscr.addch(y, x, ' ', curses.color_pair(1))
+        for i, pos in enumerate(snake.snake_position):
+            x, y = pos
+            stdscr.addch(y, x, str(snake.assigned_player) if i == 0 else '.', curses.color_pair(1))
+
+        prev_snakes_pos[oid] = snake.snake_position
+
+    return prev_snakes_pos
 
 def main():
-
-    visualizer_node = Node(visualize, dataframe = ["127.0.0.1", 8000], Types = [Snake, Apple])
-    visualizer_node.start()
+    vis_node = Node(
+        visualize, dataframe=["127.0.0.1", 8000], Types=[Snake, Apple])
+    vis_node.start()
 
 if __name__ == "__main__":
     main()

@@ -20,22 +20,21 @@ class Snake(object):
     snake_id = dimension(str)
     snake_head = dimension(list)
     snake_position = dimension(list)
-    position_uids = dimension(list)
     score = dimension(int)
+    start_game = dimension(bool)
     done = dimension(bool)
     winner = dimension(bool)
     crashed = dimension(bool)
     button_direction = dimension(int)
     prev_button_direction = dimension(int)
+    assigned_player = dimension(int)
 
     def __init__(self):
         self.oid = str(uuid.uuid4())
         self.player_id = str(uuid.uuid4())
         self.snake_id = str(uuid.uuid4())
-        self.snake_head = [10,10]
-        self.snake_position = [[10,10],[9,10],[8,10]]
-        self.position_uids = [str(uuid.uuid4()) for i in range(3)]
         self.score = 0
+        self.start_game = False
         self.done = False
         self.winner = False
         self.world = World()

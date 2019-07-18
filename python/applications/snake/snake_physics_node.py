@@ -1,11 +1,14 @@
 import time
 import sys, random, math
 import spacetime
+import argparse
 from uuid import uuid4
 from random import randint
 from multiprocessing import freeze_support
 from rtypes import pcc_set, dimension, primarykey
 from snake_datamodel import Snake, Apple, World, Direction, FRAMETIME
+from snake_bot import bot_execution
+from snake_visualizer_node import visualize
 from spacetime import Node
 import numpy as np
 
@@ -47,7 +50,6 @@ def is_direction_blocked(snake_position, current_direction_vector):
 
 def generate_snake(snake, apple):
 
-    pid = str(uuid4())
     if snake.button_direction == Direction.RIGHT:
         snake.snake_head =  [snake.snake_head[0] + 1, snake.snake_head[1]]
 
@@ -67,12 +69,10 @@ def generate_snake(snake, apple):
     if snake.snake_head == apple.apple_position:
         apple.apple_position, snake.score = collision_with_apple(apple.apple_position, snake.score)
         snake.snake_position = [snake.snake_head] + snake.snake_position
-        snake.position_uids = [pid] + snake.position_uids
 
     else:
         snake.snake_position = [snake.snake_head] + snake.snake_position
         snake.snake_position = snake.snake_position[:-1]
-        snake.position_uids = [pid] + snake.position_uids[:-1]
 
 
 def play_game(dataframe):
@@ -84,12 +84,13 @@ def play_game(dataframe):
     snakes = dataframe.read_all(Snake)
     apple = dataframe.read_all(Apple)[0]
     print ("Starting game")
-    while all(not snake.crashed for snake in snakes):
+    while any(not snake.crashed for snake in snakes):
         start_t = time.perf_counter()
         dataframe.checkout()
         for snake in snakes:
+            if snake.crashed:
+                continue
             generate_snake(snake, apple)
-
             snake.crashed = is_direction_blocked(
                 snake.snake_position, snake.direction_vector)
         dataframe.commit()
@@ -108,6 +109,14 @@ def game_physics(df, num_players):
     #phase 2: execute each frame of the game - the first frame must set up the game
     # by placing the apple in the world and adding it to the dataframe
     initializing_apple(df)
+    for i, snake in enumerate(df.read_all(Snake)):
+        x, y = random.randint(4, World.display_width-1), random.randint(1, World.display_height-1)
+        snake.snake_head = [x, y]
+        snake.snake_position = [snake.snake_head, [x-1, y], [x-2, y]]
+        snake.start_game = True
+        snake.assigned_player = i + 1
+    df.commit()
+
 
     # print ("Ready to play the game.")
     #phase 3: when the game concludes/ends, finish it
@@ -115,18 +124,27 @@ def game_physics(df, num_players):
     # print("The Score is {}.".format(final_score))
     pass
 
-def main(num_players):
+def main(port, pcount, bcount):
 
     #server
-    NewSnakePhysicsNode = Node(game_physics, server_port = 8000, Types = [Snake, Apple])
-    NewSnakePhysicsNode.start(num_players)
+    physics_node = Node(game_physics, server_port = port, Types = [Snake, Apple])
+    physics_node.start_async(pcount + bcount)
 
+    for i in range(bcount):
+        bot = Node(bot_execution, dataframe=["127.0.0.1", port], Types = [Snake, Apple])
+        bot.start_async()
 
-    #client
-    #visualizer_node = Node(visualizer, dataframe = ["127.0.0.1", 8001], Types = [Snake, Apple])
-    #visualizer_node.start()
+    visualize_node = Node(visualize, dataframe=["127.0.0.1", port], Types=[Snake, Apple])
+    visualize_node.start_async()
+    physics_node.join()
+
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--port', type=int, default=8000, help='The port of the remote dataframe (default: 8000)')
+    parser.add_argument('--players', type=int, default=1, help='The number of human players playing the game.')
+    parser.add_argument('--bots', type=int, default=1, help='The number of Bot players playing the game.')
+    args = parser.parse_args()
     freeze_support()
-    main(2)
+    main(args.port, args.players, args.bots)
