@@ -1,24 +1,22 @@
+'''Runs the Bot Snakes.'''
+# pylint: disable=duplicate-code
 import time
-import random
 import math
-import spacetime
-from rtypes import pcc_set, dimension, primarykey
-from snake_datamodel import Snake, Apple, World, Direction, FRAMETIME
+import argparse
 from spacetime import Node
-from curses import wrapper
+from snake_datamodel import Snake, Apple, Direction, FRAMETIME
 
-from threading import Thread
-import curses
-snake_color = []
 
-def init_bot(df):
+def init_bot(df):  # pylint: disable=invalid-name
+    '''Initializes Snake object and commits is to the dataframe.'''
     snake = Snake()
     df.add_one(Snake, snake)
     df.commit()
     df.push()
     return snake
 
-def bot_execution(df):
+def bot_execution(df):  # pylint: disable=invalid-name
+    '''Executes loop to run the bot snake in the game.'''
     snake = init_bot(df)
     while not snake.start_game:
         df.pull_await()
@@ -26,34 +24,41 @@ def bot_execution(df):
     defeat_player(df, snake)
 
 def set_key(key, snake):
-    if key is not snake.button_direction:
-        snake.set_button_direction(key)
+    '''Sets the key direction of the bot snake.'''
+    if key is not snake.direction:
+        snake.set_direction(key)
 
-def defeat_player(df, snake):
+def defeat_player(df, snake):  # pylint: disable=invalid-name
+    '''Executes the loop for making the decision of direction and
+        commits it to the dataframe.'''
     for key in make_decision(df, snake):
         set_key(key, snake)
         df.commit()
         df.push_await()
         df.pull_await()
 
-
-def determine_next_position_of_snake_head(snake, p_direction):
+def predict_snake_head(snake, p_direction):
+    '''Predicts the next optimal direction for the bot snake.'''
     snake_head_local = snake.snake_head
     if p_direction == Direction.RIGHT:
-        snake_head_local =  [snake_head_local[0] + 1, snake_head_local[1]]
+        snake_head_local = (snake_head_local[0] + 1, snake_head_local[1])
 
     elif p_direction == Direction.LEFT:
-        snake_head_local =  [snake_head_local[0] - 1, snake_head_local[1]]
+        snake_head_local = (snake_head_local[0] - 1, snake_head_local[1])
 
     elif p_direction == Direction.DOWN:
-        snake_head_local =  [snake_head_local[0], snake_head_local[1] + 1]
+        snake_head_local = (snake_head_local[0], snake_head_local[1] + 1)
 
     elif p_direction == Direction.UP:
-        snake_head_local =  [snake_head_local[0], snake_head_local[1] - 1]
+        snake_head_local = (snake_head_local[0], snake_head_local[1] - 1)
 
     return snake_head_local
 
-def make_decision(df, snake):
+def make_decision(df, snake):  # pylint: disable=invalid-name
+    '''Makes the decision of the next direction the snake should go in based
+       on the minimum distance between the snake's head and the apple among all
+       the possible directions/'''
+
     directions = {
         Direction.LEFT: [Direction.UP, Direction.DOWN, Direction.LEFT],
         Direction.RIGHT: [Direction.UP, Direction.DOWN, Direction.RIGHT],
@@ -62,41 +67,56 @@ def make_decision(df, snake):
     }
 
     apple = df.read_all(Apple)[0]
-    final_direction = snake.button_direction #setting the final direction to be
+    final_direction = snake.direction #setting the final direction to be
 
-    # equal to existing button_direction by default
+    # equal to existing direction by default
 
     while not snake.crashed:
         min_dist = 10000
         start_t = time.perf_counter()
-        possible_directions = directions[snake.button_direction]
+        possible_directions = directions[snake.direction]
 
         #Now computing which direction to go to in order to reach the apple
-        for i in range (3):
-            s_h_l = determine_next_position_of_snake_head(snake, possible_directions[i])
+        for direction in possible_directions:
+            s_h_l = predict_snake_head(snake, direction)
             #'s_h_l' stands for snake head local position predicted by the
             # possible directions of the snake
-            d2 = math.sqrt(pow((apple.apple_position[0] - s_h_l[0]), 2) + pow((apple.apple_position[1] - s_h_l[1]), 2))
+            dist = math.sqrt(pow((apple.apple_position[0] - s_h_l[0]), 2) +
+                             pow((apple.apple_position[1] - s_h_l[1]), 2))
 
-            if min_dist > d2 and s_h_l not in snake.snake_position[:-1]:
-                min_dist = d2
-                final_direction = possible_directions[i]
+            if min_dist > dist and s_h_l not in snake.snake_position[:-1]:
+                min_dist = dist
+                final_direction = direction
             else:
                 continue
 
-        #snake.button_direction = final_direction
+        #snake.direction = final_direction
         yield final_direction
-
 
         end_t = time.perf_counter()
         if (end_t - start_t) < FRAMETIME:
             time.sleep(FRAMETIME - end_t + start_t)
-    raise StopIteration()
 
-def main():
-    bot_node = Node(bot_execution, dataframe=["127.0.0.1", 8000], Types=[Snake, Apple])
-    bot_node.start()
-
+def main(address, port, bcount):
+    '''Main Function!'''
+    for _ in range(bcount):
+        bot = Node(bot_execution, dataframe=[address, port], Types=[Snake, Apple])
+    bot.start_async()
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()  # pylint: disable=invalid-name
+    parser.add_argument("--port",
+                        type=int,
+                        default=8000,
+                        help="The port of the remote dataframe (default: 8000)")
+    parser.add_argument("--bots",
+                        type=int,
+                        default=1,
+                        help="The number of Bot players playing the game.")
+    parser.add_argument("--address",
+                        type=str,
+                        default="127.0.0.1",
+                        help="The address of the server.")
+
+    args = parser.parse_args()  # pylint: disable=invalid-name
+    main(args.address, args.port, args.bots)
