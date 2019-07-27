@@ -64,9 +64,7 @@ def visualize_frames(stdscr, df):  # pylint: disable=invalid-name
         while not snakes and not apple:
             df.pull_await()
             snakes = df.read_all(Snake)
-            apples = df.read_all(Apple)
-            if apples:
-                apple = apples[0]
+            apple = df.read_one(Apple, 0)
             # We have an apple, and some snakes!!
             prev_snakes_pos, prev_apple_pos = show_frame(
                 stdscr, apple, snakes, dict(),
@@ -130,7 +128,7 @@ def display_snakes(stdscr, snakes, prev_snakes_pos):
 def main(address, port):
     '''Main Function!'''
     vis_node = Node(
-        visualize, dataframe=[address, port], Types=[Snake, Apple])
+        visualize, dataframe=(address, port), Types=[Snake, Apple])
     vis_node.start()
 
 if __name__ == "__main__":

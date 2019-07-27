@@ -48,18 +48,20 @@ def player_client(stdscr, df):  # pylint: disable=invalid-name
 
 def parse_key(key, snake):
     '''Takes in user input via UP, DOWN RIGHT, LEFT keys. '''
-    if key == 27:
+    if key == 27:  #if key is ESC
         snake.crashed = True
-    else:
-        #print (key)
-        if key == 260 and snake.direction != Direction.RIGHT:
-            snake.set_button_direction(Direction.LEFT)
-        elif key == 261 and snake.direction != Direction.LEFT:
-            snake.set_button_direction(Direction.RIGHT)
-        elif key == 259 and snake.direction != Direction.DOWN:
-            snake.set_button_direction(Direction.UP)
-        elif key == 258 and snake.direction != Direction.UP:
-            snake.set_button_direction(Direction.DOWN)
+    elif key == 260 and snake.direction != Direction.RIGHT:
+        # if key is LEFT Arrow
+        snake.set_button_direction(Direction.LEFT)
+    elif key == 261 and snake.direction != Direction.LEFT:
+        # if key is RIGHT Arrow
+        snake.set_button_direction(Direction.RIGHT)
+    elif key == 259 and snake.direction != Direction.DOWN:
+        # if key is UP Arrow
+        snake.set_button_direction(Direction.UP)
+    elif key == 258 and snake.direction != Direction.UP:
+        # if key is DOWN Arrow
+        snake.set_button_direction(Direction.DOWN)
 
 def take_user_input(stdscr, df, snake):  # pylint: disable=invalid-name
     ''' Pushes pressed key number to the Dataframe. '''
@@ -72,7 +74,7 @@ def take_user_input(stdscr, df, snake):  # pylint: disable=invalid-name
 def main(address, port):
     '''Main Function!'''
     player_node = Node(
-        player_execution, dataframe=[address, port], Types=[Snake, Apple])
+        player_execution, dataframe=(address, port), Types=[Snake, Apple])
     player_node.start()
 
 if __name__ == "__main__":

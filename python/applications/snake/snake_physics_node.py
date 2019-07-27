@@ -25,9 +25,8 @@ def accepting_players(dataframe, player_count):
         dataframe.checkout_await()
         players = dataframe.read_all(Snake)
         print(len(players))
-        if len(players) < player_count:
-            continue
-        return True
+        if len(players) >= player_count:
+            return True
 
 def initializing_apple(dataframe):
     '''Initializes Apple object and comnits it it to the Dataframe.'''
@@ -60,39 +59,30 @@ def is_direction_blocked(c_snake, snakes):
 
 def generate_snake(snake, apple):
     '''Generates snake as per the assigned direction of the snake's head.'''
-
     if snake.direction == Direction.RIGHT:
         snake.snake_head = (snake.snake_head[0] + 1, snake.snake_head[1])
-
     elif snake.direction == Direction.LEFT:
         snake.snake_head = (snake.snake_head[0] - 1, snake.snake_head[1])
-
     elif snake.direction == Direction.DOWN:
         snake.snake_head = (snake.snake_head[0], snake.snake_head[1] + 1)
-
     elif snake.direction == Direction.UP:
         snake.snake_head = (snake.snake_head[0], snake.snake_head[1] - 1)
-
-    #else:
-        #pass
 
     if snake.snake_head == apple.apple_position:
         apple.reset_position()
         snake.score += 1
         snake.snake_position = [snake.snake_head] + snake.snake_position
-
     else:
         snake.snake_position = [snake.snake_head] + snake.snake_position
         snake.snake_position = snake.snake_position[:-1]
 
-
 def play_game(dataframe):
     '''Reads Snake and Apple object from Dataframe, applies the game's running
-        logic and commits the changes to the objects to the dataframe.'''
-    #look at what the frame has done
-    #put in dataframe checkout at the beginning and commit at the end
-    #read the command dring dataframe checkout
-    #once read, the command needs to be committed
+       logic and commits the changes to the objects to the dataframe.'''
+    # look at what the frame has done
+    # put in dataframe checkout at the beginning and commit at the end
+    # read the command dring dataframe checkout
+    # once read, the command needs to be committed
 
     snakes = dataframe.read_all(Snake)
     apple = dataframe.read_one(Apple, 0)
@@ -114,45 +104,45 @@ def game_physics(df, num_players):  # pylint: disable=invalid-name
     ''' Checkouts and commits all the players to the dataframe,
         sets up the game initially, executes each frame of the , and calls
         the 'play_game()' function to run the game in continuity.'''
-    #checkout and commit
-    #phase 1: accepting players
+    # checkout and commit
+    # phase 1: accepting players
     accepting_players(df, num_players)
 
-    #phase 2: execute each frame of the game - the first frame must set up the
+    # phase 2: execute each frame of the game - the first frame must set up the
     # game by placing the apple in the world and adding it to the dataframe
     initializing_apple(df)
     for i, snake in enumerate(df.read_all(Snake)):
         x_pos, y_pos = (
-            random.randint(4, World.display_width-1),
-            random.randint(1, World.display_height-1))
+            random.randint(4, World.display_width - 1),
+            random.randint(1, World.display_height - 1))
         snake.snake_head = (x_pos, y_pos)
         snake.snake_position = [snake.snake_head,
-                                (x_pos-1, y_pos),
-                                (x_pos-2, y_pos)]
+                                (x_pos - 1, y_pos),
+                                (x_pos - 2, y_pos)]
         snake.start_game = True
         snake.assigned_player = i + 1
     df.commit()
 
     # print ("Ready to play the game.")
-    #phase 3: when the game concludes/ends, finish it
+    # phase 3: when the game concludes/ends, finish it
     play_game(df)  #removed 'apple_image' parameter because that is part of the
-    #'Visualizer' Node
-    #print("The Score is {}.".format(final_score))
+    # 'Visualizer' Node
+    # print("The Score is {}.".format(final_score))
 
 def main(port, pcount, bcount):
     ''' Main Function!'''
-    #server
+    # pserver
     physics_node = Node(game_physics, server_port=port, Types=[Snake, Apple])
     physics_node.start_async(pcount + bcount)
 
     for _ in range(bcount):
         bot = Node(bot_execution,
-                   dataframe=["127.0.0.1", port],
+                   dataframe=("127.0.0.1", port),
                    Types=[Snake, Apple])
         bot.start_async()
 
     visualize_node = Node(visualize,
-                          dataframe=["127.0.0.1", port],
+                          dataframe=("127.0.0.1", port),
                           Types=[Snake, Apple])
     visualize_node.start_async()
     physics_node.join()

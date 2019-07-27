@@ -42,16 +42,12 @@ def predict_snake_head(snake, p_direction):
     snake_head_local = snake.snake_head
     if p_direction == Direction.RIGHT:
         snake_head_local = (snake_head_local[0] + 1, snake_head_local[1])
-
     elif p_direction == Direction.LEFT:
         snake_head_local = (snake_head_local[0] - 1, snake_head_local[1])
-
     elif p_direction == Direction.DOWN:
         snake_head_local = (snake_head_local[0], snake_head_local[1] + 1)
-
     elif p_direction == Direction.UP:
         snake_head_local = (snake_head_local[0], snake_head_local[1] - 1)
-
     return snake_head_local
 
 def make_decision(df, snake):  # pylint: disable=invalid-name
@@ -66,8 +62,8 @@ def make_decision(df, snake):  # pylint: disable=invalid-name
         Direction.DOWN: [Direction.LEFT, Direction.RIGHT, Direction.DOWN],
     }
 
-    apple = df.read_all(Apple)[0]
-    final_direction = snake.direction #setting the final direction to be
+    apple = df.read_one(Apple, 0)
+    final_direction = snake.direction  # setting the final direction to be
 
     # equal to existing direction by default
 
@@ -76,10 +72,10 @@ def make_decision(df, snake):  # pylint: disable=invalid-name
         start_t = time.perf_counter()
         possible_directions = directions[snake.direction]
 
-        #Now computing which direction to go to in order to reach the apple
+        # Now computing which direction to go to in order to reach the apple
         for direction in possible_directions:
             s_h_l = predict_snake_head(snake, direction)
-            #'s_h_l' stands for snake head local position predicted by the
+            # 's_h_l' stands for snake head local position predicted by the
             # possible directions of the snake
             dist = math.sqrt(pow((apple.apple_position[0] - s_h_l[0]), 2) +
                              pow((apple.apple_position[1] - s_h_l[1]), 2))
@@ -87,10 +83,7 @@ def make_decision(df, snake):  # pylint: disable=invalid-name
             if min_dist > dist and s_h_l not in snake.snake_position[:-1]:
                 min_dist = dist
                 final_direction = direction
-            else:
-                continue
 
-        #snake.direction = final_direction
         yield final_direction
 
         end_t = time.perf_counter()
@@ -100,7 +93,7 @@ def make_decision(df, snake):  # pylint: disable=invalid-name
 def main(address, port, bcount):
     '''Main Function!'''
     for _ in range(bcount):
-        bot = Node(bot_execution, dataframe=[address, port], Types=[Snake, Apple])
+        bot = Node(bot_execution, dataframe=(address, port), Types=[Snake, Apple])
     bot.start_async()
 
 if __name__ == "__main__":

@@ -14,7 +14,8 @@ class Snake():
     @property
     def direction_vector(self):
         # pylint: disable=unsubscriptable-object,missing-docstring
-        return np.array(self.snake_position[0])-np.array(self.snake_position[1])
+        return (np.array(self.snake_position[0]) 
+                - np.array(self.snake_position[1]))
 
     oid = primarykey(str)
     snake_head = dimension(tuple)
@@ -30,7 +31,6 @@ class Snake():
         self.oid = str(uuid.uuid4())
         self.score = 0
         self.start_game = False
-        self.world = World()
         self.crashed = False
         self.direction = 1
         self.prev_direction = 1
@@ -61,8 +61,9 @@ class Apple():
 class World():
     '''Defines the Constants in the World.'''
     # pylint: disable=too-few-public-methods
-    display_width = 50
-    display_height = 50
+    display_width = 30
+    display_height = 30exit()
+    
 
 
 class Direction():
