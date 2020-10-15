@@ -9,7 +9,7 @@ Project done as Undergraduate Reseacrh Intern in 2019 at University of Californi
   - Results
 - [Demo](#demo)
 - [Outcomes](#outcomes)
-- Citations
+- [Citations](#citations)
 
 ## Introduction
 Quoting the Original Paper introducing the Spacetime Framework:
